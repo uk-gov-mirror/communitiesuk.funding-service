@@ -40,7 +40,11 @@ class Grant(BaseModel):
     primary_contact_name: Mapped[str]
     primary_contact_email: Mapped[str]
 
-    collections: Mapped[list["Collection"]] = relationship("Collection", lazy=True, cascade="all, delete-orphan")
+    collections: Mapped[list["Collection"]] = relationship(
+        "Collection",
+        lazy=True,
+        # Cascading intentionally not enabled to force explicit deletion
+    )
 
     users: Mapped[list["User"]] = relationship(
         "User",
@@ -65,7 +69,9 @@ class Organisation(BaseModel):
 
     name: Mapped[CIStr] = mapped_column(unique=True)
     roles: Mapped[list["UserRole"]] = relationship(
-        "UserRole", back_populates="organisation", cascade="all, delete-orphan"
+        "UserRole",
+        back_populates="organisation",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
 
@@ -95,7 +101,7 @@ class Collection(BaseModel):
         lazy=True,
         order_by="Submission.created_at_utc",
         back_populates="collection",
-        cascade="all, delete-orphan",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
     sections: Mapped[OrderingList["Section"]] = relationship(
@@ -103,9 +109,7 @@ class Collection(BaseModel):
         lazy=True,
         order_by="Section.order",
         collection_class=ordering_list("order"),
-        # Importantly we don't `delete-orphan` here; when we move sections up/down, we remove them from the collection,
-        # which would trigger the delete-orphan rule
-        cascade="all",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
     __table_args__ = (UniqueConstraint("name", "grant_id", "version", name="uq_collection_name_version_grant_id"),)
@@ -158,7 +162,9 @@ class Submission(BaseModel):
     collection: Mapped[Collection] = relationship("Collection")
 
     events: Mapped[list["SubmissionEvent"]] = relationship(
-        "SubmissionEvent", back_populates="submission", cascade="all, delete-orphan"
+        "SubmissionEvent",
+        back_populates="submission",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -185,9 +191,7 @@ class Section(BaseModel):
         lazy=True,
         order_by="Form.order",
         collection_class=ordering_list("order"),
-        # Importantly we don't `delete-orphan` here; when we move forms up/down, we remove them from the collection,
-        # which would trigger the delete-orphan rule
-        cascade="all, save-update, merge",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
     __table_args__ = (
@@ -230,9 +234,7 @@ class Form(BaseModel):
         lazy=True,
         order_by="Question.order",
         collection_class=ordering_list("order"),
-        # Importantly we don't `delete-orphan` here; when we move questions up/down, we remove them from the collection,
-        # which would trigger the delete-orphan rule
-        cascade="all, save-update, merge",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
 
@@ -261,10 +263,15 @@ class Question(BaseModel, SafeQidMixin):
 
     # todo: decide if these should be lazy loaded, eagerly joined or eagerly selectin
     expressions: Mapped[list["Expression"]] = relationship(
-        "Expression", back_populates="question", cascade="all, delete-orphan", order_by="Expression.created_at_utc"
+        "Expression",
+        back_populates="question",
+        order_by="Expression.created_at_utc",
+        # Cascading intentionally not enabled to force explicit deletion
     )
     data_source: Mapped["DataSource"] = relationship(
-        "DataSource", cascade="all, delete-orphan", back_populates="question"
+        "DataSource",
+        back_populates="question",
+        # Cascading intentionally not enabled to force explicit deletion
     )
 
     @property
@@ -394,7 +401,9 @@ class Expression(BaseModel):
     created_by: Mapped[User] = relationship("User")
 
     data_source_item_references: Mapped[list["DataSourceItemReference"]] = relationship(
-        "DataSourceItemReference", back_populates="expression", cascade="all, delete-orphan"
+        "DataSourceItemReference",
+        back_populates="expression",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -466,7 +475,9 @@ class DataSourceItem(BaseModel):
 
     data_source: Mapped[DataSource] = relationship("DataSource", back_populates="items", uselist=False)
     references: Mapped[list["DataSourceItemReference"]] = relationship(
-        "DataSourceItemReference", back_populates="data_source_item"
+        "DataSourceItemReference",
+        back_populates="data_source_item",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (

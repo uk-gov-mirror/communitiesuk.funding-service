@@ -2,7 +2,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Never, Protocol, Sequence
 from uuid import UUID
 
-from sqlalchemy import ScalarResult, select, text
+from sqlalchemy import ScalarResult, delete, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -614,6 +614,7 @@ def get_expression(expression_id: UUID) -> Expression:
 
 
 def remove_question_expression(question: Question, expression: Expression) -> Question:
+    db.session.delete(expression)
     question.expressions.remove(expression)
     db.session.flush()
     return question
@@ -642,6 +643,23 @@ def delete_collection(collection: Collection) -> None:
     if collection.live_submissions:
         db.session.rollback()
         raise ValueError("Cannot delete collection with live submissions")
+
+    db.session.execute(
+        delete(Submission).where(
+            Submission.collection_id == collection.id, Submission.collection_version == collection.version
+        )
+    )
+
+    question_ids = [
+        question.id for section in collection.sections for form in section.forms for question in form.questions
+    ]
+    form_ids = [form.id for section in collection.sections for form in section.forms]
+    section_ids = [section.id for section in collection.sections]
+    db.session.execute(delete(Expression).where(Expression.question_id.in_(question_ids)))
+    db.session.execute(delete(DataSource).where(DataSource.question_id.in_(question_ids)))
+    db.session.execute(delete(Question).where(Question.id.in_(question_ids)))
+    db.session.execute(delete(Form).where(Form.id.in_(form_ids)))
+    db.session.execute(delete(Section).where(Section.id.in_(section_ids)))
 
     db.session.delete(collection)
     db.session.flush()

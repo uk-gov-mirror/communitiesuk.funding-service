@@ -13,7 +13,11 @@ from uuid import UUID
 
 from sqlalchemy import select, text
 
-from app.common.data.interfaces.collections import create_section, raise_if_question_has_any_dependencies
+from app.common.data.interfaces.collections import (
+    create_section,
+    delete_collection,
+    raise_if_question_has_any_dependencies,
+)
 from app.common.data.models import (
     Collection,
     Form,
@@ -44,15 +48,11 @@ def delete_submissions_created_by_user(*, grant_id: UUID, created_by_id: UUID) -
 
 
 def delete_grant(grant_id: UUID) -> None:
+    for collection in db.session.query(Collection).where(Collection.grant_id == grant_id):
+        delete_collection(collection)
     # Not optimised; do not lift+shift unedited.
     grant = db.session.query(Grant).where(Grant.id == grant_id).one()
     db.session.delete(grant)
-    db.session.flush()
-
-
-def delete_collection(collection_id: UUID) -> None:
-    collection = db.session.query(Collection).where(Collection.id == collection_id).one()
-    db.session.delete(collection)
     db.session.flush()
 
 

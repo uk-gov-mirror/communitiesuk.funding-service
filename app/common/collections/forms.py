@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired, Email, InputRequired, Optional, Val
 
 from app.common.data.models import Expression, Question
 from app.common.data.types import QuestionDataType, immutable_json_flat_scalars
-from app.common.expressions import ExpressionContext, evaluate
+from app.common.expressions import ExpressionContext, evaluate, interpolate
 from app.common.forms.fields import MHCLGAccessibleAutocomplete, MHCLGCheckboxesInput, MHCLGRadioInput
 from app.common.forms.validators import FinalOptionExclusive, URLWithoutProtocol, WordRange
 
@@ -123,8 +123,8 @@ def build_question_form(questions: list[Question], expression_context: Expressio
         match question.data_type:
             case QuestionDataType.EMAIL:
                 field = EmailField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovTextInput(),
                     validators=[
                         DataRequired(f"Enter the {question.name}"),
@@ -134,15 +134,15 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                 )
             case QuestionDataType.TEXT_SINGLE_LINE:
                 field = StringField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovTextInput(),
                     validators=[DataRequired(f"Enter the {question.name}")],
                 )
             case QuestionDataType.TEXT_MULTI_LINE:
                 field = StringField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovCharacterCount() if question.presentation_options.word_limit else GovTextArea(),
                     validators=[DataRequired(f"Enter the {question.name}")]
                     + (
@@ -157,15 +157,15 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                 )
             case QuestionDataType.INTEGER:
                 field = IntegerField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovTextInput(),
                     validators=[InputRequired(f"Enter the {question.name}")],
                 )
             case QuestionDataType.YES_NO:
                 field = RadioField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovRadioInput(),
                     choices=[(1, "Yes"), (0, "No")],
                     validators=[InputRequired("Select yes or no")],
@@ -177,8 +177,8 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                         question.data_source.items[-1].label if question.separate_option_if_no_items_match else None
                     )
                     field = SelectField(
-                        label=question.text,
-                        description=question.hint or "",
+                        label=interpolate(question.text, expression_context),
+                        description=interpolate(question.hint or "", expression_context),
                         widget=MHCLGAccessibleAutocomplete(fallback_option=fallback_option),
                         choices=[("", "")] + [(item.key, item.label) for item in question.data_source.items],
                         validators=[DataRequired("Select an option")],
@@ -186,8 +186,8 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                 else:
                     choices = [(item.key, item.label) for item in question.data_source.items]
                     field = RadioField(
-                        label=question.text,
-                        description=question.hint or "",
+                        label=interpolate(question.text, expression_context),
+                        description=interpolate(question.hint or "", expression_context),
                         widget=MHCLGRadioInput(
                             insert_divider_before_last_item=bool(question.separate_option_if_no_items_match)
                         ),
@@ -195,8 +195,8 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                     )
             case QuestionDataType.URL:
                 field = StringField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=GovTextInput(),
                     validators=[
                         DataRequired(f"Enter the {question.name}"),
@@ -216,8 +216,8 @@ def build_question_form(questions: list[Question], expression_context: Expressio
                     validators.append(FinalOptionExclusive(question_name=question.name))
 
                 field = SelectMultipleField(
-                    label=question.text,
-                    description=question.hint or "",
+                    label=interpolate(question.text, expression_context),
+                    description=interpolate(question.hint or "", expression_context),
                     widget=MHCLGCheckboxesInput(
                         insert_divider_before_last_item=bool(question.separate_option_if_no_items_match)
                     ),

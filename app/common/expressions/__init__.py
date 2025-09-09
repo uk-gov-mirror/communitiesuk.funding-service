@@ -1,4 +1,5 @@
 import ast
+import re
 from typing import TYPE_CHECKING, Any, Iterator, cast
 
 import simpleeval
@@ -7,7 +8,7 @@ from immutabledict import immutabledict
 from app.common.data.types import immutable_json_flat_scalars, json_flat_scalars, scalars
 
 if TYPE_CHECKING:
-    from app.common.data.models import Expression
+    from app.common.data.models import Collection, Expression
 
 
 class ManagedExpressionError(Exception):
@@ -31,10 +32,14 @@ class ExpressionContext(immutable_json_flat_scalars):
     A thin wrapper around three immutable dicts, where access to keys is done in priority order:
     - Keys from the `form` come first (data just submitted by the user answering some questions)
     - Keys from the `submission` come next (all data currently held about a submission)
-    - Keys from the `expression` come last (DB expression.context)
+    - Keys from the `expression` come next (DB expression.context)
 
     The only overlap should be between `form` and `submission`, where `form` holds the latest data and `submission`
     holds the previous answer (until the page is saved).
+
+    - Optionally, there is a fallback dict for question names to help interpolate text that references a question. If
+      no answer has been provided by a user yet, we can show the question name instead to still show something that
+      should make sense (eg to form designers when there is no submission that holds data).
 
     The main reason for this is to treat each of these things as immutable, but overlay them. To do this with a standard
     dict would mean creating lots of copies/merges/duplicates and juggling them.
@@ -45,6 +50,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         from_form: immutable_json_flat_scalars | None = None,
         from_submission: immutable_json_flat_scalars | None = None,
         from_expression: immutable_json_flat_scalars | None = None,
+        collection: "Collection" = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -58,10 +64,23 @@ class ExpressionContext(immutable_json_flat_scalars):
             from_submission = cast(immutable_json_flat_scalars, immutabledict())
         if from_expression is None:
             from_expression = cast(immutable_json_flat_scalars, immutabledict())
+        if collection is not None:
+            question_names: immutable_json_flat_scalars = immutabledict(
+                {
+                    question.safe_qid: f"(( {question.name} ))"
+                    for form in collection.forms
+                    for question in form.cached_questions
+                }
+            )
+        else:
+            question_names: immutable_json_flat_scalars = immutabledict()
+
+        self.fallback_question_names: bool = True
 
         self._form_context: immutable_json_flat_scalars = from_form
         self._submission_context: immutable_json_flat_scalars = from_submission
         self._expression_context: immutable_json_flat_scalars = from_expression
+        self._question_names_context: immutable_json_flat_scalars = question_names
         self._update_keys()
 
     @property
@@ -91,10 +110,20 @@ class ExpressionContext(immutable_json_flat_scalars):
         self._expression_context = value
         self._update_keys()
 
+    @property
+    def questions_context(self) -> immutable_json_flat_scalars:
+        return self._question_names_context
+
+    @questions_context.setter
+    def questions_context(self, value: immutable_json_flat_scalars) -> None:
+        self._question_names_context = value
+        self._update_keys()
+
     def _update_keys(self) -> None:
         _form_context: json_flat_scalars = cast(json_flat_scalars, self.form_context or {})
         _submission_context: json_flat_scalars = cast(json_flat_scalars, self.submission_context or {})
         _expression_context: json_flat_scalars = cast(json_flat_scalars, self.expression_context or {})
+        _questions_context: json_flat_scalars = cast(json_flat_scalars, self.questions_context or {})
 
         # note: This feels like it could just be a set, or that a set is a more appropriate data structure. However I've
         # chosen a dict on purpose because: sets in python are unordered; dicts in python are ordered by insertion
@@ -105,7 +134,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         # maybe it's still "better" than fully-random set ordering.
         _keys: dict[str, None] = dict()
 
-        for _dict in [_form_context, _submission_context, _expression_context]:
+        for _dict in [_form_context, _submission_context, _expression_context, _questions_context]:
             for _key in _dict:
                 _keys.setdefault(_key, None)
 
@@ -118,6 +147,8 @@ class ExpressionContext(immutable_json_flat_scalars):
             return self.submission_context[key]
         elif key in self.expression_context:
             return self.expression_context[key]
+        elif key in self.questions_context and self.fallback_question_names:
+            return self.questions_context[key]
         else:
             raise KeyError(key)
 
@@ -154,7 +185,9 @@ class ExpressionContext(immutable_json_flat_scalars):
         return [(key, self[key]) for key in self._keys]
 
 
-def _evaluate_expression_with_context(expression: "Expression", context: ExpressionContext | None = None) -> Any:
+def _evaluate_expression_with_context(
+    expression: "Expression", context: ExpressionContext | None = None, fallback_question_names: bool = False
+) -> Any:
     """
     The base evaluator to use for handling all expressions.
 
@@ -169,6 +202,7 @@ def _evaluate_expression_with_context(expression: "Expression", context: Express
         context = ExpressionContext()
     context.expression_context = immutabledict(expression.context or {})
 
+    context.fallback_question_names = fallback_question_names
     evaluator = simpleeval.EvalWithCompoundTypes(names=context)  # type: ignore[no-untyped-call]
 
     # Remove all nodes except those we explicitly allowlist
@@ -203,7 +237,18 @@ def _evaluate_expression_with_context(expression: "Expression", context: Express
 
 
 # todo: interpolate an expression (eg for injecting dynamic data into question text, error messages, etc)
-def interpolate(expression: "Expression", context: ExpressionContext | None) -> Any: ...
+def interpolate(text: str, context: ExpressionContext | None) -> str:
+    from app.common.data.models import Expression
+
+    def _interpolate(matchobj: re.Match) -> str:
+        expr = Expression(statement=matchobj.group(0))
+        return _evaluate_expression_with_context(expr, context, fallback_question_names=True)
+
+    return re.sub(
+        r"\(\(.+?\)\)",
+        _interpolate,
+        text,
+    )
 
 
 def evaluate(expression: "Expression", context: ExpressionContext | None = None) -> bool:

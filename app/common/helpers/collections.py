@@ -44,6 +44,7 @@ from app.common.expressions import (
     ExpressionContext,
     UndefinedVariableInExpression,
     evaluate,
+    interpolate,
 )
 from app.common.filters import format_datetime
 
@@ -118,7 +119,7 @@ class SubmissionHelper:
             for question in form.cached_questions
             if (answer := self.cached_get_answer_for_question(question.id)) is not None
         }
-        return ExpressionContext(from_submission=immutabledict(submission_data))
+        return ExpressionContext(from_submission=immutabledict(submission_data), collection=self.collection)
 
     @property
     def all_visible_questions(self) -> dict[UUID, "Question"]:
@@ -364,6 +365,9 @@ class SubmissionHelper:
                 return next(question_iterator, None)
 
         raise ValueError(f"Could not find a question with id={current_question_id} in collection={self.collection}")
+
+    def interpolate(self, text):
+        return interpolate(text, self.cached_expression_context)
 
 
 class CollectionHelper:

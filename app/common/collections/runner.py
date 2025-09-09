@@ -127,6 +127,9 @@ class FormRunner:
         for question in self.questions:
             self.submission.submit_answer_for_question(question.id, self.question_form)
 
+    def interpolate(self, text):
+        return self.submission.interpolate(text)
+
     def save_is_form_completed(self, user: "User") -> bool:
         if not self.form:
             raise RuntimeError("Form context not set")

@@ -733,6 +733,8 @@ def update_question(
     if items is not NOT_PROVIDED and items is not None:
         _update_data_source(question, items)  # ty: ignore[invalid-argument-type]
 
+    # TODO: sync references if any of these fields are context-aware
+
     try:
         db.session.flush()
     except IntegrityError as e:

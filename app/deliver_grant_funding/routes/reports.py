@@ -1,5 +1,6 @@
 import io
 import uuid
+from functools import partial
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
@@ -50,6 +51,7 @@ from app.common.data.types import (
     RoleEnum,
     SubmissionModeEnum,
 )
+from app.common.expressions import ExpressionContext, interpolate
 from app.common.expressions.forms import build_managed_expression_form
 from app.common.expressions.registry import get_managed_validators_by_data_type
 from app.common.forms import GenericConfirmDeletionForm, GenericSubmitForm
@@ -391,6 +393,7 @@ def list_task_questions(grant_id: UUID, form_id: UUID) -> ResponseReturnValue:
         db_form=db_form,
         delete_form=delete_wtform,
         form=preview_form,
+        interpolate=partial(interpolate, context=ExpressionContext(collection=db_form.collection)),
     )
 
 
@@ -425,6 +428,7 @@ def list_group_questions(grant_id: UUID, group_id: UUID) -> ResponseReturnValue:
         db_form=group.form,
         delete_form=delete_wtform,
         group=group,
+        interpolate=partial(interpolate, context=ExpressionContext(collection=group.form.collection)),
     )
 
 

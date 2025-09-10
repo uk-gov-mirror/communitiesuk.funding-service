@@ -83,6 +83,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         if grant is not None:
             grant_context = immutabledict({"grant": {"name": self._wrap_in_parens_for_admin_view(grant.name)}})
 
+        grant_recipient_context = immutabledict({"grant_recipient": {"funding_allocation": 1_000_000}})
         self.fallback_question_names: bool = True
 
         self._form_context: immutable_json_flat_scalars = from_form
@@ -90,8 +91,8 @@ class ExpressionContext(immutable_json_flat_scalars):
         self._expression_context: immutable_json_flat_scalars = from_expression
         self._question_names_context: immutable_json_flat_scalars = question_names
         self._grant_context: immutable_json_flat_scalars = grant_context
+        self._grant_recipient_context: immutable_json_flat_scalars = grant_recipient_context
         self._update_keys()
-
 
     def _wrap_in_parens_for_admin_view(self, text) -> str:
         if self.is_admin_view:
@@ -141,6 +142,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         _expression_context: json_flat_scalars = cast(json_flat_scalars, self.expression_context or {})
         _questions_context: json_flat_scalars = cast(json_flat_scalars, self.questions_context or {})
         _grant_context: json_flat_scalars = cast(json_flat_scalars, self._grant_context or {})
+        _grant_recipient_context: json_flat_scalars = cast(json_flat_scalars, self._grant_recipient_context or {})
 
         # note: This feels like it could just be a set, or that a set is a more appropriate data structure. However I've
         # chosen a dict on purpose because: sets in python are unordered; dicts in python are ordered by insertion
@@ -168,6 +170,8 @@ class ExpressionContext(immutable_json_flat_scalars):
             return self.questions_context[key]
         elif key in self._grant_context:
             return self._grant_context[key]
+        elif key in self._grant_recipient_context:
+            return self._grant_recipient_context[key]
         else:
             raise KeyError(key)
 

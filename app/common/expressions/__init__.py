@@ -8,7 +8,7 @@ from immutabledict import immutabledict
 from app.common.data.types import immutable_json_flat_scalars, json_flat_scalars, scalars
 
 if TYPE_CHECKING:
-    from app.common.data.models import Collection, Expression
+    from app.common.data.models import Collection, Expression, Grant
 
 
 class ManagedExpressionError(Exception):
@@ -51,6 +51,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         from_submission: immutable_json_flat_scalars | None = None,
         from_expression: immutable_json_flat_scalars | None = None,
         collection: "Collection" = None,
+        grant: "Grant" = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -75,12 +76,17 @@ class ExpressionContext(immutable_json_flat_scalars):
         else:
             question_names: immutable_json_flat_scalars = immutabledict()
 
+        grant_context = immutabledict()
+        if grant is not None:
+            grant_context = immutabledict({"grant": {"name": grant.name}})
+
         self.fallback_question_names: bool = True
 
         self._form_context: immutable_json_flat_scalars = from_form
         self._submission_context: immutable_json_flat_scalars = from_submission
         self._expression_context: immutable_json_flat_scalars = from_expression
         self._question_names_context: immutable_json_flat_scalars = question_names
+        self._grant_context: immutable_json_flat_scalars = grant_context
         self._update_keys()
 
     @property
@@ -124,6 +130,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         _submission_context: json_flat_scalars = cast(json_flat_scalars, self.submission_context or {})
         _expression_context: json_flat_scalars = cast(json_flat_scalars, self.expression_context or {})
         _questions_context: json_flat_scalars = cast(json_flat_scalars, self.questions_context or {})
+        _grant_context: json_flat_scalars = cast(json_flat_scalars, self._grant_context or {})
 
         # note: This feels like it could just be a set, or that a set is a more appropriate data structure. However I've
         # chosen a dict on purpose because: sets in python are unordered; dicts in python are ordered by insertion
@@ -149,6 +156,8 @@ class ExpressionContext(immutable_json_flat_scalars):
             return self.expression_context[key]
         elif key in self.questions_context and self.fallback_question_names:
             return self.questions_context[key]
+        elif key in self._grant_context:
+            return self._grant_context[key]
         else:
             raise KeyError(key)
 

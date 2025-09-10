@@ -393,7 +393,9 @@ def list_task_questions(grant_id: UUID, form_id: UUID) -> ResponseReturnValue:
         db_form=db_form,
         delete_form=delete_wtform,
         form=preview_form,
-        interpolate=partial(interpolate, context=ExpressionContext(collection=db_form.collection)),
+        interpolate=partial(
+            interpolate, context=ExpressionContext(collection=db_form.collection, grant=db_form.collection.grant)
+        ),
     )
 
 
@@ -428,7 +430,9 @@ def list_group_questions(grant_id: UUID, group_id: UUID) -> ResponseReturnValue:
         db_form=group.form,
         delete_form=delete_wtform,
         group=group,
-        interpolate=partial(interpolate, context=ExpressionContext(collection=group.form.collection)),
+        interpolate=partial(
+            interpolate, context=ExpressionContext(collection=group.form.collection, grant=group.form.collection.grant)
+        ),
     )
 
 

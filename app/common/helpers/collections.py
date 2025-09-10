@@ -119,7 +119,9 @@ class SubmissionHelper:
             for question in form.cached_questions
             if (answer := self.cached_get_answer_for_question(question.id)) is not None
         }
-        return ExpressionContext(from_submission=immutabledict(submission_data), collection=self.collection)
+        return ExpressionContext(
+            from_submission=immutabledict(submission_data), collection=self.collection, grant=self.grant
+        )
 
     @property
     def all_visible_questions(self) -> dict[UUID, "Question"]:

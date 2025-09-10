@@ -120,7 +120,10 @@ class SubmissionHelper:
             if (answer := self.cached_get_answer_for_question(question.id)) is not None
         }
         return ExpressionContext(
-            from_submission=immutabledict(submission_data), collection=self.collection, grant=self.grant
+            from_submission=immutabledict(submission_data),
+            collection=self.collection,
+            grant=self.grant,
+            is_admin_view=True,
         )
 
     @property

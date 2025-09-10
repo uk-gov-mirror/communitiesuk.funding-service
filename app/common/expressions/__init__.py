@@ -52,11 +52,14 @@ class ExpressionContext(immutable_json_flat_scalars):
         from_expression: immutable_json_flat_scalars | None = None,
         collection: "Collection" = None,
         grant: "Grant" = None,
+        is_admin_view: bool = False,
         *args: Any,
         **kwargs: Any,
     ):
         # TODO: we will probably end up with some of these dicts having nested data (eg for complex questions like
         #       address; so `scalars` likely won't last forever.
+        self.is_admin_view = is_admin_view
+
         super().__init__(*args, **kwargs)
 
         if from_form is None:
@@ -68,7 +71,7 @@ class ExpressionContext(immutable_json_flat_scalars):
         if collection is not None:
             question_names: immutable_json_flat_scalars = immutabledict(
                 {
-                    question.safe_qid: f"(( {question.name} ))"
+                    question.safe_qid: self._wrap_in_parens_for_admin_view(question.name)
                     for form in collection.forms
                     for question in form.cached_questions
                 }
@@ -78,7 +81,7 @@ class ExpressionContext(immutable_json_flat_scalars):
 
         grant_context = immutabledict()
         if grant is not None:
-            grant_context = immutabledict({"grant": {"name": grant.name}})
+            grant_context = immutabledict({"grant": {"name": self._wrap_in_parens_for_admin_view(grant.name)}})
 
         self.fallback_question_names: bool = True
 
@@ -88,6 +91,13 @@ class ExpressionContext(immutable_json_flat_scalars):
         self._question_names_context: immutable_json_flat_scalars = question_names
         self._grant_context: immutable_json_flat_scalars = grant_context
         self._update_keys()
+
+
+    def _wrap_in_parens_for_admin_view(self, text) -> str:
+        if self.is_admin_view:
+            return f"(( {text} ))"
+
+        return text
 
     @property
     def form_context(self) -> immutable_json_flat_scalars:

@@ -394,7 +394,10 @@ def list_task_questions(grant_id: UUID, form_id: UUID) -> ResponseReturnValue:
         delete_form=delete_wtform,
         form=preview_form,
         interpolate=partial(
-            interpolate, context=ExpressionContext(collection=db_form.collection, grant=db_form.collection.grant)
+            interpolate,
+            context=ExpressionContext(
+                collection=db_form.collection, grant=db_form.collection.grant, is_admin_view=True
+            ),
         ),
     )
 

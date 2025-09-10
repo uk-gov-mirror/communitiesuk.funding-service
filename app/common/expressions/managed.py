@@ -182,7 +182,11 @@ class GreaterThan(ManagedExpression):
 
     @property
     def message(self) -> str:
-        return f"The answer must be greater than {'or equal to ' if self.inclusive else ''}{self.minimum_value}"
+        minimum_value_description = self.minimum_value
+        if not isinstance(self.minimum_value, int) and not self.minimum_value.isnumeric():
+            minimum_value_description = f"(( {self.minimum_value} ))"
+
+        return f"The answer must be greater than {'or equal to ' if self.inclusive else ''}{minimum_value_description}"
 
     @property
     def statement(self) -> str:
@@ -239,7 +243,11 @@ class LessThan(ManagedExpression):
 
     @property
     def message(self) -> str:
-        return f"The answer must be less than {'or equal to ' if self.inclusive else ''}{self.maximum_value}"
+        maximum_value_description = self.maximum_value
+        if not isinstance(self.maximum_value, int) and not self.maximum_value.isnumeric():
+            maximum_value_description = f"(( {self.maximum_value} ))"
+
+        return f"The answer must be less than {'or equal to ' if self.inclusive else ''}{maximum_value_description}"
 
     @property
     def statement(self) -> str:
@@ -303,10 +311,18 @@ class Between(ManagedExpression):
         #       - does that persist in the context (inherited from ManagedExpression) or as a separate
         #         property on the model
         # todo: make this use expression evaluation/interpolation rather than f-strings
+        minimum_value_description = self.minimum_value
+        if not isinstance(self.minimum_value, int) and not self.minimum_value.isnumeric():
+            minimum_value_description = f"(( {self.minimum_value} ))"
+
+        maximum_value_description = self.maximum_value
+        if not isinstance(self.maximum_value, int) and not self.maximum_value.isnumeric():
+            maximum_value_description = f"(( {self.maximum_value} ))"
+
         return (
             f"The answer must be between "
-            f"{self.minimum_value}{' (inclusive)' if self.minimum_inclusive else ' (exclusive)'} and "
-            f"{self.maximum_value}{' (inclusive)' if self.maximum_inclusive else ' (exclusive)'}"
+            f"{minimum_value_description}{' (inclusive)' if self.minimum_inclusive else ' (exclusive)'} and "
+            f"{maximum_value_description}{' (inclusive)' if self.maximum_inclusive else ' (exclusive)'}"
         )
 
     @property

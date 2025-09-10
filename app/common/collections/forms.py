@@ -103,7 +103,7 @@ def build_validators(question: Question, expression_context: ExpressionContext) 
                 raise RuntimeError("Support for un-managed validation has not been implemented yet.")
 
             if not evaluate(expression=validation, context=expression_context):
-                raise ValidationError(validation.managed.message)
+                raise ValidationError(interpolate(validation.managed.message, expression_context))
 
         validators.append(cast(Callable[[Form, Field], None], partial(run_validation, validation=_validation)))
 

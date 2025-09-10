@@ -1,4 +1,5 @@
 import ast
+import builtins
 import re
 from typing import TYPE_CHECKING, Any, Iterator, cast
 
@@ -84,6 +85,7 @@ class ExpressionContext(immutable_json_flat_scalars):
             grant_context = immutabledict({"grant": {"name": self._wrap_in_parens_for_admin_view(grant.name)}})
 
         grant_recipient_context = immutabledict({"grant_recipient": {"funding_allocation": 1_000_000}})
+
         self.fallback_question_names: bool = True
 
         self._form_context: immutable_json_flat_scalars = from_form
@@ -265,7 +267,15 @@ def interpolate(text: str, context: ExpressionContext | None) -> str:
 
     def _interpolate(matchobj: re.Match) -> str:
         expr = Expression(statement=matchobj.group(0))
-        return _evaluate_expression_with_context(expr, context, fallback_question_names=True)
+        value = _evaluate_expression_with_context(expr, context, fallback_question_names=True)
+
+        match type(value):
+            case builtins.int:
+                return f"{value:,d}"
+            case builtins.str:
+                return value
+            case _:
+                raise ValueError(f"Unhandled interpolation type: {type(value)}")
 
     return re.sub(
         r"\(\(.+?\)\)",

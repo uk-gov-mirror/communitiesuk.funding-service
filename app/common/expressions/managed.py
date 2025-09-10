@@ -10,8 +10,9 @@ from flask_wtf import FlaskForm
 from govuk_frontend_wtf.wtforms_widgets import GovCheckboxesInput, GovCheckboxInput, GovRadioInput, GovTextInput
 from markupsafe import Markup
 from pydantic import BaseModel, TypeAdapter
-from wtforms import BooleanField, IntegerField, SelectField, SelectMultipleField
+from wtforms import BooleanField, SelectField, SelectMultipleField
 from wtforms.fields.core import Field
+from wtforms.fields.simple import StringField
 from wtforms.validators import DataRequired, InputRequired, Optional, ValidationError
 
 from app.common.data.types import ManagedExpressionsEnum, QuestionDataType
@@ -22,6 +23,16 @@ from app.types import TRadioItem
 if TYPE_CHECKING:
     from app.common.data.models import Expression, Question
     from app.common.expressions.forms import _ManagedExpressionForm
+
+
+def _convert_to_qid_format(value: str) -> str:
+    # HACK: convert UUIDs to qid format just for a bit of ease-of-use; this won't be a prod solution.
+    if value is None:
+        return None
+    try:
+        return f"q_{UUID(value).hex}"
+    except ValueError:
+        return value
 
 
 class ManagedExpression(BaseModel, SafeQidMixin):
@@ -162,7 +173,7 @@ class GreaterThan(ManagedExpression):
     _key: ManagedExpressionsEnum = name
 
     question_id: UUID
-    minimum_value: int
+    minimum_value: int | str
     inclusive: bool = False
 
     @property
@@ -182,11 +193,12 @@ class GreaterThan(ManagedExpression):
         expression: TOptional["Expression"] = None, referenced_question: TOptional["Question"] = None
     ) -> dict[str, "Field"]:
         return {
-            "greater_than_value": IntegerField(
+            "greater_than_value": StringField(
                 "Minimum value",
                 default=cast(int, expression.context["minimum_value"]) if expression else None,
                 widget=GovTextInput(),
                 validators=[Optional()],
+                filters=[_convert_to_qid_format],
                 render_kw={"params": {"classes": "govuk-input--width-10"}},
             ),
             "greater_than_inclusive": BooleanField(
@@ -218,7 +230,7 @@ class LessThan(ManagedExpression):
     _key: ManagedExpressionsEnum = name
 
     question_id: UUID
-    maximum_value: int
+    maximum_value: int | str
     inclusive: bool = False
 
     @property
@@ -238,11 +250,12 @@ class LessThan(ManagedExpression):
         expression: TOptional["Expression"] = None, referenced_question: TOptional["Question"] = None
     ) -> dict[str, "Field"]:
         return {
-            "less_than_value": IntegerField(
+            "less_than_value": StringField(
                 "Maximum value",
                 default=cast(int, expression.context["maximum_value"]) if expression else None,
                 widget=GovTextInput(),
                 validators=[Optional()],
+                filters=[_convert_to_qid_format],
                 render_kw={"params": {"classes": "govuk-input--width-10"}},
             ),
             "less_than_inclusive": BooleanField(
@@ -274,9 +287,9 @@ class Between(ManagedExpression):
     _key: ManagedExpressionsEnum = name
 
     question_id: UUID
-    minimum_value: int
+    minimum_value: int | str
     minimum_inclusive: bool = False
-    maximum_value: int
+    maximum_value: int | str
     maximum_inclusive: bool = False
 
     @property
@@ -312,11 +325,12 @@ class Between(ManagedExpression):
         expression: TOptional["Expression"] = None, referenced_question: TOptional["Question"] = None
     ) -> dict[str, "Field"]:
         return {
-            "between_bottom_of_range": IntegerField(
+            "between_bottom_of_range": StringField(
                 "Minimum value",
                 default=cast(int, expression.context["minimum_value"]) if expression else None,
                 widget=GovTextInput(),
                 validators=[Optional()],
+                filters=[_convert_to_qid_format],
                 render_kw={"params": {"classes": "govuk-input--width-10"}},
             ),
             "between_bottom_inclusive": BooleanField(
@@ -324,11 +338,12 @@ class Between(ManagedExpression):
                 default=cast(bool, expression.context["minimum_inclusive"]) if expression else None,
                 widget=GovCheckboxInput(),
             ),
-            "between_top_of_range": IntegerField(
+            "between_top_of_range": StringField(
                 "Maximum value",
                 default=cast(int, expression.context["maximum_value"]) if expression else None,
                 widget=GovTextInput(),
                 validators=[Optional()],
+                filters=[_convert_to_qid_format],
                 render_kw={"params": {"classes": "govuk-input--width-10"}},
             ),
             "between_top_inclusive": BooleanField(

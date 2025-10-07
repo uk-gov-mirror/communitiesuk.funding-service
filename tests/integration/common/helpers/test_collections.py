@@ -772,3 +772,15 @@ class TestCollectionHelper:
         print(result_string)
 
         assert len(queries) == 12
+
+    class TestQuestionVisibilityWithAddAnother:
+        def test_collection_setup(self, factories):  # collection_with_add_another_submissions):
+            collection = factories.collection.create(
+                create_completed_submissions_add_another_nested_group_with_conditions__test=1
+            )
+            submission = collection.test_submissions[0]
+            assert submission.data == {
+                str(collection.park_name_question.id): "No play equipment, No trees",
+                str(collection.has_trees_question.id): False,
+                str(collection.has_equipment_question.id): False,
+            }

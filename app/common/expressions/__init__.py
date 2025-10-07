@@ -103,6 +103,7 @@ class ExpressionContext(ChainMap[str, Any]):
         submission_helper: Optional["SubmissionHelper"] = None,
     ) -> "ExpressionContext":
         """Pulls together all of the context that we want to be able to expose to an expression when evaluating it."""
+        fallback_question_names = mode == "interpolation"
 
         assert len(ExpressionContext.ContextSources) == 1, (
             "When defining a new source of context for expressions, "
@@ -118,6 +119,11 @@ class ExpressionContext(ChainMap[str, Any]):
                 question.safe_qid: (
                     answer.get_value_for_evaluation() if mode == "evaluation" else answer.get_value_for_interpolation()
                 )
+                if not question.add_another_container
+                else [
+                    a.get_value_for_evaluation() if mode == "evaluation" else a.get_value_for_interpolation()
+                    for a in answer
+                ]
                 for form in submission_helper.collection.forms
                 for question in form.cached_questions
                 if (
@@ -133,7 +139,8 @@ class ExpressionContext(ChainMap[str, Any]):
             if submission_helper
             else {}
         )
-        if mode == "interpolation":
+
+        if fallback_question_names:
             for form in collection.forms:
                 for question in form.cached_questions:
                     if expression_context_end_point and (
@@ -146,6 +153,42 @@ class ExpressionContext(ChainMap[str, Any]):
                     submission_data.setdefault(question.safe_qid, f"(({question.name}))")
 
         return ExpressionContext(submission_data=submission_data)
+
+    @staticmethod
+    def _build_submission_data(
+        mode: Literal["evaluation", "interpolation"],
+        expression_context_end_point: Optional["Component"] = None,
+        submission_helper: Optional["SubmissionHelper"] = None,
+    ) -> dict[str, Any]:
+        submission_data = {}
+        if submission_helper:
+            for form in submission_helper.collection.forms:
+                for question in form.cached_questions:
+                    if expression_context_end_point is None or (
+                        expression_context_end_point.form == form
+                        and form.global_component_index(expression_context_end_point)
+                        >= form.global_component_index(question)
+                    ):
+                        if question.add_another_container:
+                            for i in range(submission_helper.get_count_for_add_another(question.add_another_container)):
+                                answer = submission_helper.cached_get_answer_for_question(
+                                    question.id, add_another_index=i
+                                )
+                                if answer is not None:
+                                    submission_data[question.safe_qid_indexed(i)] = (
+                                        answer.get_value_for_evaluation()
+                                        if mode == "evaluation"
+                                        else answer.get_value_for_interpolation()
+                                    )
+                        else:
+                            answer = submission_helper.cached_get_answer_for_question(question.id)
+                            if answer is not None:
+                                submission_data[question.safe_qid] = (
+                                    answer.get_value_for_evaluation()
+                                    if mode == "evaluation"
+                                    else answer.get_value_for_interpolation()
+                                )
+        return submission_data
 
     @staticmethod
     def get_context_keys_and_labels(

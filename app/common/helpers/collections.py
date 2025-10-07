@@ -127,7 +127,11 @@ class SubmissionHelper:
     @cached_property
     def cached_form_data(self) -> dict[str, Any]:
         form_data = {
-            question.safe_qid: answer.get_value_for_form()
+            question.safe_qid: (
+                answer.get_value_for_form()
+                if not question.add_another_container
+                else [a.get_value_for_form() for a in answer]
+            )
             for form in self.submission.collection.forms
             for question in form.cached_questions
             if (answer := self.cached_get_answer_for_question(question.id)) is not None
@@ -297,10 +301,17 @@ class SubmissionHelper:
 
         raise ValueError(f"Could not find form for question_id={question_id} in collection={self.collection.id}")
 
-    def _get_answer_for_question(self, question_id: UUID) -> AllAnswerTypes | None:
+    # TODO: if we need to fetch answers at a specific index we can add an add_another_index which would return
+    #       a single value - this would have the benefit of checking that entry exists etc.
+    def _get_answer_for_question(self, question_id: UUID) -> AllAnswerTypes | list[AllAnswerTypes] | None:
         question = self.get_question(question_id)
-        serialised_data = self.submission.data.get(str(question_id))
-        return _deserialise_question_type(question, serialised_data) if serialised_data is not None else None
+
+        if not question.add_another_container:
+            serialised_data = self.submission.data.get(str(question_id))
+            return _deserialise_question_type(question, serialised_data) if serialised_data is not None else None
+        else:
+            serialised_entries = self.submission.data.get(str(question.add_another_container.id), [])
+            return [_deserialise_question_type(question, entry.get(str(question_id))) for entry in serialised_entries]
 
     def submit_answer_for_question(self, question_id: UUID, form: DynamicQuestionForm) -> None:
         if self.is_completed:

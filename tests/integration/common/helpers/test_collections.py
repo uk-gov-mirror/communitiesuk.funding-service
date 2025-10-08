@@ -926,15 +926,17 @@ class TestCollectionHelper:
             )
 
         @pytest.mark.parametrize(
-            "park_name, expected",
+            "park_name, expected_if_trees, expected_if_equipment_and_trees",
             [
-                ("No play equipment, No trees", False),
-                ("No play equipment, Has trees", True),
-                ("Has play equipment, No trees", False),
-                ("Has play equipment, Has trees", True),
+                ("No play equipment, No trees", False, False),
+                ("No play equipment, Has trees", True, False),
+                ("Has play equipment, No trees", False, False),
+                ("Has play equipment, Has trees", True, True),
             ],
         )
-        def test_is_component_visible_simple_condition_inside_add_another_group(self, factories, park_name, expected):
+        def test_is_component_visible_simple_condition_inside_add_another_group(
+            self, factories, park_name, expected_if_trees, expected_if_equipment_and_trees
+        ):
             collection = factories.collection.create(
                 create_completed_submissions_add_another_nested_group_with_conditions__test=1
             )
@@ -947,11 +949,11 @@ class TestCollectionHelper:
             helper = SubmissionHelper(submission)
             assert (
                 helper.is_component_visible(collection.tree_species_question, helper.cached_evaluation_context)
-                == expected
+                == expected_if_trees
             )
             assert (
                 helper.is_component_visible(collection.under_a_tree_question, helper.cached_evaluation_context)
-                == expected
+                == expected_if_equipment_and_trees
             )
 
         @pytest.mark.parametrize(

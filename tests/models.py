@@ -588,7 +588,7 @@ class _CollectionFactory(SQLAlchemyModelFactory):
             form=form,
             data_type=QuestionDataType.TEXT_SINGLE_LINE,
             text="What is the name of your park?",
-            add_another=True,
+            add_another=False,
         )
         q1 = _QuestionFactory.create(
             name="Has trees", form=form, data_type=QuestionDataType.YES_NO, text="Does your park have trees?"

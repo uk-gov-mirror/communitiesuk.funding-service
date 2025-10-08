@@ -311,7 +311,12 @@ class SubmissionHelper:
             return _deserialise_question_type(question, serialised_data) if serialised_data is not None else None
         else:
             serialised_entries = self.submission.data.get(str(question.add_another_container.id), [])
-            return [_deserialise_question_type(question, entry.get(str(question_id))) for entry in serialised_entries]
+            # Falling over as we get None for an add another entry that doesn't exist yet
+            answers_for_question = []
+            for entry in serialised_entries:
+                if str(question_id) in entry:
+                    answers_for_question.append(_deserialise_question_type(question, entry[str(question_id)]))
+            return answers_for_question
 
     def submit_answer_for_question(self, question_id: UUID, form: DynamicQuestionForm) -> None:
         if self.is_completed:

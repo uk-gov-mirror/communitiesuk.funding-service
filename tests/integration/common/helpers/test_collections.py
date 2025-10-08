@@ -784,3 +784,120 @@ class TestCollectionHelper:
                 str(collection.has_trees_question.id): False,
                 str(collection.has_equipment_question.id): False,
             }
+
+        @pytest.mark.parametrize(
+            "park_name, expected",
+            [
+                ("No play equipment, No trees", False),
+                ("No play equipment, Has trees", False),
+                ("Has play equipment, No trees", True),
+                ("Has play equipment, Has trees", True),
+            ],
+        )
+        def test_is_component_visible_simple_condition_inside_group(self, factories, park_name, expected):
+            collection = factories.collection.create(
+                create_completed_submissions_add_another_nested_group_with_conditions__test=1
+            )
+            submission = next(
+                submission
+                for submission in collection.test_submissions
+                if submission.data[str(collection.park_name_question.id)] == park_name
+            )
+            assert submission
+            helper = SubmissionHelper(submission)
+            assert (
+                helper.is_component_visible(collection.equipment_number_question, helper.cached_evaluation_context)
+                == expected
+            )
+            assert helper.is_component_visible(collection.equipment_group, helper.cached_evaluation_context) == expected
+
+        @pytest.mark.parametrize(
+            "park_name, expected",
+            [
+                ("No play equipment, No trees", False),
+                ("No play equipment, Has trees", False),
+                ("Has play equipment, No trees", True),
+                ("Has play equipment, Has trees", True),
+            ],
+        )
+        def test_is_component_visible_simple_condition(self, factories, park_name, expected):
+            collection = factories.collection.create(
+                create_completed_submissions_add_another_nested_group_with_conditions__test=1
+            )
+            submission = next(
+                submission
+                for submission in collection.test_submissions
+                if submission.data[str(collection.park_name_question.id)] == park_name
+            )
+            assert submission
+            helper = SubmissionHelper(submission)
+            assert (
+                helper.is_component_visible(collection.fenced_off_question, helper.cached_evaluation_context)
+                == expected
+            )
+
+        @pytest.mark.parametrize(
+            "park_name, expected",
+            [
+                ("No play equipment, No trees", False),
+                ("No play equipment, Has trees", True),
+                ("Has play equipment, No trees", False),
+                ("Has play equipment, Has trees", True),
+            ],
+        )
+        def test_is_component_visible_simple_condition_inside_add_another_group(self, factories, park_name, expected):
+            collection = factories.collection.create(
+                create_completed_submissions_add_another_nested_group_with_conditions__test=1
+            )
+            submission = next(
+                submission
+                for submission in collection.test_submissions
+                if submission.data[str(collection.park_name_question.id)] == park_name
+            )
+            assert submission
+            helper = SubmissionHelper(submission)
+            assert (
+                helper.is_component_visible(collection.tree_species_question, helper.cached_evaluation_context)
+                == expected
+            )
+            assert (
+                helper.is_component_visible(collection.under_a_tree_question, helper.cached_evaluation_context)
+                == expected
+            )
+
+        @pytest.mark.parametrize(
+            "park_name, add_another_index, expected",
+            [
+                ("Has play equipment, No trees", 0, False),
+                ("Has play equipment, No trees", 1, False),
+                ("Has play equipment, No trees", 2, True),
+                ("Has play equipment, Has trees", 0, False),
+                ("Has play equipment, Has trees", 1, False),
+                ("Has play equipment, Has trees", 2, True),
+            ],
+        )
+        @pytest.mark.skip(reason="Not implemented")
+        def test_is_component_visible_condition_inside_add_another_group_dependency_within_group(
+            self, factories, park_name, add_another_index, expected
+        ):
+            collection = factories.collection.create(
+                create_completed_submissions_add_another_nested_group_with_conditions__test=1
+            )
+            submission = next(
+                submission
+                for submission in collection.test_submissions
+                if submission.data[str(collection.park_name_question.id)] == park_name
+            )
+            assert submission
+            helper = SubmissionHelper(submission)
+            assert (
+                helper.is_component_visible(
+                    collection.other_equipment_question,
+                    helper.cached_evaluation_context,
+                    add_another_index=add_another_index,
+                )
+                == expected
+            )
+            assert (
+                helper.is_component_visible(collection.under_a_tree_question, helper.cached_evaluation_context) is True
+            )

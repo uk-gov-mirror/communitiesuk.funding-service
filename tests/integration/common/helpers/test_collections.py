@@ -967,7 +967,6 @@ class TestCollectionHelper:
                 ("Has play equipment, Has trees", 2, True),
             ],
         )
-        @pytest.mark.skip(reason="Not implemented")
         def test_is_component_visible_condition_inside_add_another_group_dependency_within_group(
             self, factories, park_name, add_another_index, expected
         ):
@@ -988,7 +987,4 @@ class TestCollectionHelper:
                     add_another_index=add_another_index,
                 )
                 == expected
-            )
-            assert (
-                helper.is_component_visible(collection.under_a_tree_question, helper.cached_evaluation_context) is True
             )

@@ -253,7 +253,9 @@ class SubmissionHelper:
         """Returns the visible, ordered forms based upon the current state of this collection."""
         return sorted(self.collection.forms, key=lambda f: f.order)
 
-    def is_component_visible(self, component: "Component", context: "ExpressionContext") -> bool:
+    def is_component_visible(
+        self, component: "Component", context: "ExpressionContext", add_another_index: int | None = None
+    ) -> bool:
         # we can optimise this to exit early and do this in a sensible order if we switch
         # to going through questions in a nested way rather than flat
         def get_all_conditions(component: "Component") -> list["Expression"]:
@@ -266,7 +268,33 @@ class SubmissionHelper:
             return conditions
 
         try:
-            return all(evaluate(condition, context) for condition in get_all_conditions(component))
+            temp_expression_context = context
+            this_components_conditions = get_all_conditions(component)
+            if component.add_another_container:
+                add_another_context = {}
+                for condition in this_components_conditions:
+                    if (
+                        condition.managed.referenced_question.add_another_container
+                        and condition.managed.referenced_question.add_another_container
+                        == component.add_another_container
+                    ):
+                        individual_answer = self._get_answer_for_question(condition.managed.referenced_question.id)[
+                            add_another_index
+                        ]
+
+                        if individual_answer:
+                            add_another_context[condition.managed.referenced_question.safe_qid] = (
+                                individual_answer.get_value_for_evaluation()
+                            )
+
+                temp_expression_context = context.new_child(add_another_context)
+                for condition in this_components_conditions:
+                    result = evaluate(condition, temp_expression_context)
+                    if result:
+                        continue
+                    return False
+                return True
+            return all(evaluate(condition, temp_expression_context) for condition in this_components_conditions)
         except UndefinedVariableInExpression:
             # todo: fail open for now - this method should accept an optional bool that allows this condition to fail
             #       or not- checking visibility on the question page itself should never fail - the summary page could
@@ -316,6 +344,8 @@ class SubmissionHelper:
             for entry in serialised_entries:
                 if str(question_id) in entry:
                     answers_for_question.append(_deserialise_question_type(question, entry[str(question_id)]))
+                else:
+                    answers_for_question.append(None)
             return answers_for_question
 
     def submit_answer_for_question(self, question_id: UUID, form: DynamicQuestionForm) -> None:

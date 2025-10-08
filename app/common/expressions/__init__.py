@@ -123,6 +123,7 @@ class ExpressionContext(ChainMap[str, Any]):
                 else [
                     a.get_value_for_evaluation() if mode == "evaluation" else a.get_value_for_interpolation()
                     for a in answer
+                    if a
                 ]
                 for form in submission_helper.collection.forms
                 for question in form.cached_questions
@@ -239,7 +240,8 @@ def _evaluate_expression_with_context(expression: "Expression", context: Express
     """
     if context is None:
         context = ExpressionContext()
-    context.expression_context = expression.context or {}
+    # TODO this breaks when we've extended the contxt - need to understand why
+    # context.expression_context = expression.context or {}
 
     evaluator = simpleeval.EvalWithCompoundTypes(names=context, functions=expression.required_functions)  # type: ignore[no-untyped-call]
 

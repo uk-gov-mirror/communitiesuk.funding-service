@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Never, Optional, Protocol, Sequence
 from uuid import UUID
 
 from flask import current_app
-from sqlalchemy import ScalarResult, and_, delete, or_, select, text
+from sqlalchemy import ScalarResult, and_, asc, delete, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -187,6 +187,26 @@ def update_collection(  # noqa: C901
         collection.status = status
 
     return collection
+
+
+def get_open_and_closed_collections_for_grant(
+    grant_id: UUID | None = None,
+    type_: CollectionType | None = None,
+) -> Sequence[Collection]:
+    return db.session.scalars(
+        select(Collection)
+        .join(Collection.grant.and_(Grant.id == grant_id, Grant.status == GrantStatusEnum.LIVE))
+        .where(
+            and_(
+                Collection.type == type_,
+                or_(Collection.status == CollectionStatusEnum.OPEN, Collection.status == CollectionStatusEnum.CLOSED),
+            )
+        )
+        .order_by(asc(Collection.status))
+        .order_by(
+            asc(Collection.submission_period_end_date),
+        )
+    ).all()
 
 
 @flush_and_rollback_on_exceptions

@@ -209,6 +209,8 @@ class _CollectionFactory(SQLAlchemyModelFactory):
     grant_id = factory.LazyAttribute(lambda o: o.grant.id)
     grant = factory.SubFactory(_GrantFactory)
 
+    submission_period_end_date = datetime.date(2030, 12, 31)
+
     @factory.post_generation  # type: ignore
     def create_completed_submissions_conditional_question(  # type: ignore
         obj: Collection,

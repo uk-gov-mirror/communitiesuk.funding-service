@@ -34,6 +34,7 @@ from app.common.data.interfaces.collections import (
     get_expression_by_id,
     get_form_by_id,
     get_group_by_id,
+    get_open_and_closed_collections_for_grant,
     get_question_by_id,
     get_referenced_data_source_items_by_managed_expression,
     get_submission,
@@ -3575,3 +3576,46 @@ class TestAddAnother:
         with pytest.raises(ValueError) as e:
             remove_add_another_answers_at_index(submission, add_another_group, -1)
         assert str(e.value) == "Cannot remove answers at index -1 as there are only 0 existing answers"
+
+
+class TestGetOpenAndClosedReportsForGrant:
+    def test_get_open_and_closed_reports(self, db_session, factories):
+        grants = factories.grant.create_batch(2, status=GrantStatusEnum.LIVE)
+        draft_grants = factories.grant.create_batch(2, status=GrantStatusEnum.DRAFT)
+
+        report1 = factories.collection.create(grant=grants[0], status=CollectionStatusEnum.OPEN)
+        report2 = factories.collection.create(grant=grants[0], status=CollectionStatusEnum.CLOSED)
+        _ = factories.collection.create(grant=grants[0], status=CollectionStatusEnum.DRAFT)
+        _ = factories.collection.create(grant=grants[1], status=CollectionStatusEnum.OPEN)
+        _ = factories.collection.create(grant=grants[1], status=CollectionStatusEnum.CLOSED)
+        _ = factories.collection.create(grant=draft_grants[0], status=CollectionStatusEnum.OPEN)
+        _ = factories.collection.create(grant=draft_grants[1], status=CollectionStatusEnum.CLOSED)
+
+        result = get_open_and_closed_collections_for_grant(
+            grant_id=grants[0].id, type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(result) == 2
+        assert result[0].id == report1.id
+        assert result[1].id == report2.id
+
+    def test_get_open_and_closed_reports_sort_order(self, db_session, factories):
+        grants = factories.grant.create_batch(2, status=GrantStatusEnum.LIVE)
+        report1 = factories.collection.create(
+            grant=grants[0], status=CollectionStatusEnum.CLOSED, submission_period_end_date=datetime.date(2024, 12, 31)
+        )
+        report2 = factories.collection.create(grant=grants[0], status=CollectionStatusEnum.OPEN)
+        report3 = factories.collection.create(
+            grant=grants[0], status=CollectionStatusEnum.CLOSED, submission_period_end_date=datetime.date(2024, 7, 31)
+        )
+        report4 = factories.collection.create(
+            grant=grants[0], status=CollectionStatusEnum.OPEN, submission_period_end_date=datetime.date(2025, 12, 31)
+        )
+
+        result = get_open_and_closed_collections_for_grant(
+            grant_id=grants[0].id, type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(result) == 4
+        assert result[0].id == report4.id
+        assert result[1].id == report2.id
+        assert result[2].id == report3.id
+        assert result[3].id == report1.id

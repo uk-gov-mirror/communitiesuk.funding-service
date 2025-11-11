@@ -177,7 +177,7 @@ def sso_get_token() -> ResponseReturnValue:
         ), 403
 
     # For all other valid users with roles after the above, finish the flow and redirect
-    redirect_to_path = sanitise_redirect_url(session.pop("next", url_for("index")))
+    redirect_to_path = sanitise_redirect_url(session.pop("next", url_for("deliver_grant_funding.list_grants")))
     session.pop("flow", None)
 
     if not login_user(user):

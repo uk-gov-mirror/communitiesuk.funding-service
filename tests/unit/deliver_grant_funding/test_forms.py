@@ -8,6 +8,7 @@ from wtforms import ValidationError
 
 from app.common.data.types import QuestionDataType, QuestionPresentationOptions, RoleEnum
 from app.common.helpers.collections import SubmissionHelper
+from app.deliver_grant_funding.admin.forms import PlatformAdminCreateCertifiersForm
 from app.deliver_grant_funding.forms import (
     GrantAddUserForm,
     GrantGGISForm,
@@ -349,3 +350,69 @@ class TestSelectDataSourceQuestionForm:
 
         assert len(form.question.choices) == 3
         assert {q[0] for q in form.question.choices} == {"", str(integer_q1.id), str(integer_q2.id)}
+
+
+class TestPlatformAdminCreateCertifiersForm:
+    def test_valid_certifiers_data(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = (
+            "organisation-name\tfirst-name\tlast-name\temail-address\n"
+            "Test Org\tJohn\tDoe\tjohn.doe@example.com\n"
+            "Another Org\tJane\tSmith\tjane.smith@example.com"
+        )
+
+        assert form.validate() is True
+        assert len(form.certifiers_data.errors) == 0
+
+    def test_invalid_header_row(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = (
+            "wrong-header\tfirst-name\tlast-name\temail-address\nTest Org\tJohn\tDoe\tjohn.doe@example.com"
+        )
+
+        assert form.validate() is False
+        assert "The header row must be exactly" in form.certifiers_data.errors[0]
+
+    def test_invalid_email_address(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = (
+            "organisation-name\tfirst-name\tlast-name\temail-address\nTest Org\tJohn\tDoe\tinvalid-email"
+        )
+
+        assert form.validate() is False
+        assert "Invalid email address(es)" in form.certifiers_data.errors[0]
+        assert "invalid-email" in form.certifiers_data.errors[0]
+
+    def test_multiple_invalid_email_addresses(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = (
+            "organisation-name\tfirst-name\tlast-name\temail-address\n"
+            "Test Org\tJohn\tDoe\tinvalid-email\n"
+            "Another Org\tJane\tSmith\talso-invalid"
+        )
+
+        assert form.validate() is False
+        assert "Invalid email address(es)" in form.certifiers_data.errors[0]
+        assert "invalid-email" in form.certifiers_data.errors[0]
+        assert "also-invalid" in form.certifiers_data.errors[0]
+
+    def test_invalid_tsv_format(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = "organisation-name\tfirst-name\tlast-name\temail-address\nTest Org\tJohn"
+
+        assert form.validate() is False
+        assert "The tab-separated data is not valid" in form.certifiers_data.errors[0]
+
+    def test_get_normalised_certifiers_data(self, app):
+        form = PlatformAdminCreateCertifiersForm()
+        form.certifiers_data.data = (
+            "organisation-name\tfirst-name\tlast-name\temail-address\n"
+            "Test Org\tJohn\tDoe\tjohn.doe@example.com\n"
+            "Another Org\tJane\tSmith\tjane.smith@example.com"
+        )
+
+        normalised_data = form.get_normalised_certifiers_data()
+
+        assert len(normalised_data) == 2
+        assert normalised_data[0] == ("Test Org", "John Doe", "john.doe@example.com")
+        assert normalised_data[1] == ("Another Org", "Jane Smith", "jane.smith@example.com")

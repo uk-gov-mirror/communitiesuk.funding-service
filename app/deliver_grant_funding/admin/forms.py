@@ -100,6 +100,55 @@ class PlatformAdminBulkCreateOrganisationsForm(FlaskForm):
         return normalised_organisations
 
 
+class PlatformAdminCreateCertifiersForm(FlaskForm):
+    certifiers_data = TextAreaField(
+        "Certifiers TSV data",
+        default="organisation-name\tfirst-name\tlast-name\temail-address\n",
+        validators=[DataRequired()],
+        widget=GovTextArea(),
+    )
+    submit = SubmitField("Set up certifiers", widget=GovSubmitInput())
+
+    def validate_certifiers_data(self, field: TextAreaField) -> None:
+        assert field.data
+
+        if field.data.splitlines()[0] != "organisation-name\tfirst-name\tlast-name\temail-address":
+            field.errors.append(  # type: ignore[attr-defined]
+                "The header row must be exactly: organisation-name\tfirst-name\tlast-name\temail-address"
+            )
+            return
+
+        try:
+            users_data = self.get_normalised_certifiers_data()
+        except Exception as e:
+            field.errors.append(f"The tab-separated data is not valid: {str(e)}")  # type: ignore[attr-defined]
+            return
+
+        # Validate email addresses
+        from wtforms.validators import Email as EmailValidator
+
+        email_validator = EmailValidator()
+        invalid_emails = []
+        for _, _, email_address in users_data:
+            try:
+                email_validator(self, type("obj", (), {"data": email_address})())
+            except Exception:
+                invalid_emails.append(email_address)
+
+        if invalid_emails:
+            field.errors.append(  # type: ignore[attr-defined]
+                f"Invalid email address(es): {', '.join(invalid_emails)}"
+            )
+
+    def get_normalised_certifiers_data(self) -> list[tuple[str, str, str]]:
+        assert self.certifiers_data.data
+        users_data = self.certifiers_data.data
+        tsv_reader = csv.reader(users_data.splitlines(), delimiter="\t")
+        _ = next(tsv_reader)  # Skip the header
+        normalised_users = [(row[0], row[1] + " " + row[2], row[3]) for row in tsv_reader]
+        return normalised_users
+
+
 class PlatformAdminBulkCreateGrantRecipientsForm(FlaskForm):
     recipients = SelectMultipleField(
         "Grant recipients", choices=[], widget=GovSelectWithSearch(multiple=True), validators=[DataRequired()]

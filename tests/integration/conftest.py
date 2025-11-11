@@ -36,6 +36,7 @@ from app.extensions.record_sqlalchemy_queries import QueryInfo, get_recorded_que
 from app.services.notify import Notification
 from tests.conftest import FundingServiceTestClient, _Factories, _precompile_templates
 from tests.integration.utils import TimeFreezer
+from tests.models import _get_grant_managing_organisation
 from tests.types import TemplateRenderRecord, TTemplatesRendered
 from tests.utils import build_db_config
 
@@ -263,6 +264,36 @@ def mock_notification_service_calls(mocker: MockerFixture) -> Generator[list[_Ca
     )
 
     yield calls
+
+
+@pytest.fixture()
+def authenticated_magic_link_client(
+    anonymous_client: FundingServiceTestClient, factories: _Factories, request: FixtureRequest, db_session: Session
+) -> Generator[FundingServiceTestClient, None, None]:
+    email_mark = request.node.get_closest_marker("authenticate_as")
+    email = email_mark.args[0] if email_mark else "test@localgov.gov.uk"
+
+    recipient_org = factories.organisation.create(can_manage_grants=False)
+    grant_org = _get_grant_managing_organisation()
+    grant = factories.grant.create(organisation=grant_org)
+    grant_recipient = factories.grant_recipient.create(grant=grant, organisation=recipient_org)
+    user = factories.user.create(email=email)
+    factories.user_role.create(user=user, organisation=recipient_org, grant=grant, permissions=[RoleEnum.DATA_PROVIDER])
+    user._grant_recipients = [grant_recipient]
+
+    # `login_user(user)` is what we use to catch and update a user's `last_logged_in_at_utc` by looking out for flask
+    # login's `user_logged_in` signal. In our app, these `login_user(user)` calls are only done in routes that use the
+    # `auto_commit_after_request` decorator, but here we're not in an existing session and would be left with a dirty
+    # session after this client is used in tests, so we need to commit this change to the user before we continue.
+    login_user(user)
+    with anonymous_client.session_transaction() as session:
+        session["auth"] = AuthMethodEnum.MAGIC_LINK
+
+    anonymous_client.user = user
+    anonymous_client.grant = grant
+    db_session.commit()
+
+    yield anonymous_client
 
 
 @pytest.fixture()

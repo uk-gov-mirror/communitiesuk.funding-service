@@ -190,14 +190,16 @@ def update_collection(  # noqa: C901
 
 
 def get_open_and_closed_collections_for_grant(
-    grant_id: UUID | None = None,
-    type_: CollectionType | None = None,
+    grant_id: UUID,
+    type_: CollectionType,
 ) -> Sequence[Collection]:
     return db.session.scalars(
         select(Collection)
-        .join(Collection.grant.and_(Grant.id == grant_id, Grant.status == GrantStatusEnum.LIVE))
+        .join(Collection.grant)
         .where(
             and_(
+                Grant.id == grant_id,
+                Grant.status == GrantStatusEnum.LIVE,
                 Collection.type == type_,
                 or_(Collection.status == CollectionStatusEnum.OPEN, Collection.status == CollectionStatusEnum.CLOSED),
             )

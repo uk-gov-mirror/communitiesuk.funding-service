@@ -3619,3 +3619,31 @@ class TestGetOpenAndClosedReportsForGrant:
         assert result[1].id == report2.id
         assert result[2].id == report3.id
         assert result[3].id == report1.id
+
+    def test_get_open_and_closed_reports_no_results(self, db_session, factories):
+        grants = factories.grant.create_batch(3, status=GrantStatusEnum.LIVE)
+        draft_grants = factories.grant.create_batch(2, status=GrantStatusEnum.DRAFT)
+
+        factories.collection.create(grant=grants[0], status=CollectionStatusEnum.OPEN)
+        factories.collection.create(grant=grants[0], status=CollectionStatusEnum.CLOSED)
+        factories.collection.create(grant=grants[2], status=CollectionStatusEnum.DRAFT)
+
+        results_bad_grant_id = get_open_and_closed_collections_for_grant(
+            grant_id=uuid.uuid4(), type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(results_bad_grant_id) == 0
+
+        results_grant_is_not_live = get_open_and_closed_collections_for_grant(
+            grant_id=draft_grants[0].id, type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(results_grant_is_not_live) == 0
+
+        results_grant_has_no_collections = get_open_and_closed_collections_for_grant(
+            grant_id=grants[1].id, type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(results_grant_has_no_collections) == 0
+
+        results_grant_has_collections_in_wrong_state = get_open_and_closed_collections_for_grant(
+            grant_id=grants[2].id, type_=CollectionType.MONITORING_REPORT
+        )
+        assert len(results_grant_has_collections_in_wrong_state) == 0

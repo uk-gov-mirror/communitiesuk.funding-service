@@ -1,3 +1,4 @@
+from app import CollectionStatusEnum, GrantStatusEnum
 from app.common.data.models import get_ordered_nested_components
 
 
@@ -132,3 +133,35 @@ class TestAddAnother:
         assert question.add_another_container == group1
         assert group2.add_another_container == group1
         assert group1.add_another_container == group1
+
+
+class TestGrantAccessReports:
+    def test_access_reports(self, factories):
+        grant = factories.grant.build(status=GrantStatusEnum.LIVE)
+        report1 = factories.collection.build(grant=grant, status=CollectionStatusEnum.OPEN)
+        report2 = factories.collection.build(grant=grant, status=CollectionStatusEnum.CLOSED)
+        _ = factories.collection.build(grant=grant, status=CollectionStatusEnum.DRAFT)
+
+        result = grant.access_reports
+        assert len(result) == 2
+        assert result[0].id == report1.id
+        assert result[1].id == report2.id
+
+    def test_access_reports_grant_not_live(self, factories):
+        grant = factories.grant.build(status=GrantStatusEnum.DRAFT)
+        factories.collection.build(grant=grant, status=CollectionStatusEnum.CLOSED)
+
+        assert len(grant.access_reports) == 0
+
+    def test_get_open_and_closed_no_collections(self, db_session, factories):
+        grant = factories.grant.build(status=GrantStatusEnum.LIVE)
+
+        results_grant_has_no_collections = grant.access_reports
+        assert len(results_grant_has_no_collections) == 0
+
+    def test_get_access_reports_wrong_state(self, factories):
+        grant = factories.grant.build(status=GrantStatusEnum.LIVE)
+        factories.collection.build(grant=grant, status=CollectionStatusEnum.DRAFT)
+
+        results_grant_has_collections_in_wrong_state = grant.access_reports
+        assert len(results_grant_has_collections_in_wrong_state) == 0

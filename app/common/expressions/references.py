@@ -138,6 +138,34 @@ class ExpressionReference(str):
         return schema.root.get(ds_ref.column_name)
 
     @property
+    def data_source(self) -> DataSource | None:
+        from app.common.data.interfaces.data_sets import get_data_source
+
+        ds_ref = self.data_source_reference
+        if not ds_ref:
+            return None
+
+        try:
+            data_source = get_data_source(ds_ref.data_source_id) if ds_ref else None
+        except NoResultFound:
+            data_source = None
+
+        if not data_source:
+            return None
+
+        return data_source
+
+    @property
+    def label(self) -> str:
+        if question := self.question:
+            return question.data_reference_label
+
+        if (column := self.data_source_column) and (data_source := self.data_source):
+            return f"{column.original_column_name} from {data_source.name} data set"
+
+        raise ValueError(f"Can't resolve ExpressionReference {self!r} to a specific label; unknown reference shape")
+
+    @property
     def data_type(self) -> QuestionDataType:
         """Resolve this reference to the data type of the value it points at.
 

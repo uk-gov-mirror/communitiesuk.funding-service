@@ -104,7 +104,6 @@ class AddContextToExpressionsModel(_ReferenceDataSessionModel):
     form_id: UUID | None = None
 
     data_source: ExpressionContext.ContextSources | None = None
-    depends_on_question_id: UUID | None = None
     expression_id: UUID | None = None
 
     subject_reference: ExpressionReference | None = None

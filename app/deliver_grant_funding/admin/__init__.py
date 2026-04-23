@@ -8,6 +8,7 @@ from app.deliver_grant_funding.admin.entities import (
     PlatformAdminGrantView,
     PlatformAdminInvitationView,
     PlatformAdminOrganisationView,
+    PlatformAdminSubmissionView,
     PlatformAdminUserRoleView,
     PlatformAdminUserView,
 )
@@ -60,5 +61,6 @@ def register_admin_views(flask_admin: Admin, db_: SQLAlchemy) -> None:
     flask_admin.add_view(PlatformAdminGrantView(ProxySession(db_)))  # type: ignore[arg-type]
     flask_admin.add_view(PlatformAdminGrantRecipientView(ProxySession(db_)))  # type: ignore[arg-type]
     flask_admin.add_view(PlatformAdminCollectionView(ProxySession(db_)))  # type: ignore[arg-type]
+    flask_admin.add_view(PlatformAdminSubmissionView(ProxySession(db_)))  # type: ignore[arg-type]
     flask_admin.add_view(PlatformAdminInvitationView(ProxySession(db_)))  # type: ignore[arg-type]
     flask_admin.add_view(PlatformAdminAuditEventView(ProxySession(db_)))  # type: ignore[arg-type]
